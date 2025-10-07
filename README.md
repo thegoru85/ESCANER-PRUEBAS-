@@ -1,2 +1,7 @@
-# ESCANER-PRUEBAS-
-ESTE ES SOLO PARA PRUEBAS ANTES DE QUE FUNCIONE EL OTRO 
+escaner-identificaciones/
+├── index.html          (tu página principal)
+├── styles/
+│   └── style.css       (estilos)
+├── js/
+│   └── scanner.js      (lógica del escáner)
+└── README.md
