@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escaner de Credenciales SEARS</title>
+    <title>Escaner de Credenciales</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
@@ -100,8 +100,9 @@
         }
 
         .preview-image {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
             display: none;
         }
 
@@ -545,9 +546,9 @@
         let pdfFile = null;
         let focusInterval = null;
 
-        // Dimensiones del recuadro de recorte (mayor resolución)
-        const CROP_WIDTH = 400;  // Ancho del recuadro verde
-        const CROP_HEIGHT = 250; // Alto del recuadro verde
+        // Dimensiones del recuadro de recorte (alta resolución)
+        const CROP_WIDTH = 400;
+        const CROP_HEIGHT = 250;
 
         // Inicialización
         function init() {
@@ -599,7 +600,7 @@
             focusIndicator.style.display = 'block';
             focusIndicator.textContent = 'Enfocando...';
             
-            // Simular enfoque automático (en navegadores móviles esto es automático)
+            // Simular enfoque automático
             let focusCount = 0;
             focusInterval = setInterval(() => {
                 focusCount++;
@@ -678,16 +679,14 @@
             // Guardar la imagen según el lado actual
             if (currentSide === 'front') {
                 frontImageData = imageData;
-                frontImage.src = imageData;
-                frontImage.style.display = 'block';
+                updatePreviewImage(frontImage, imageData, 'front');
                 frontPreview.classList.add('filled');
                 frontPreview.querySelector('.preview-icon').style.display = 'none';
                 frontRotation = 0;
                 statusDiv.textContent = 'Frente de la credencial capturado y recortado correctamente';
             } else {
                 backImageData = imageData;
-                backImage.src = imageData;
-                backImage.style.display = 'block';
+                updatePreviewImage(backImage, imageData, 'back');
                 backPreview.classList.add('filled');
                 backPreview.querySelector('.preview-icon').style.display = 'none';
                 backRotation = 0;
@@ -697,6 +696,28 @@
             statusDiv.className = 'status status-success';
             closeCamera();
             updateUI();
+        }
+
+        // Actualizar imagen de vista previa para que ocupe todo el espacio
+        function updatePreviewImage(imgElement, imageData, side) {
+            // Crear una nueva imagen para calcular dimensiones
+            const tempImg = new Image();
+            tempImg.onload = function() {
+                imgElement.src = imageData;
+                imgElement.style.display = 'block';
+                
+                // Aplicar transformación CSS para que la imagen ocupe todo el espacio
+                imgElement.style.objectFit = 'cover';
+                imgElement.style.width = '100%';
+                imgElement.style.height = '100%';
+                
+                // Aplicar rotación actual si existe
+                const rotation = side === 'front' ? frontRotation : backRotation;
+                if (rotation !== 0) {
+                    imgElement.style.transform = `rotate(${rotation}deg)`;
+                }
+            };
+            tempImg.src = imageData;
         }
 
         // Rotar imagen
@@ -740,17 +761,18 @@
             doc.text(`Escaneado el: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 105, 27, { align: 'center' });
             
             // Agregar frente de la credencial (arriba)
-            doc.addImage(frontImageData, 'JPEG', 20, 40, 170, 106);
+            // Ajustar tamaño para que ocupe bien el espacio en el PDF
+            doc.addImage(frontImageData, 'JPEG', 25, 40, 160, 100);
             doc.setFontSize(12);
-            doc.text('FRENTE', 105, 155, { align: 'center' });
+            doc.text('FRENTE', 105, 145, { align: 'center' });
             
             // Agregar reverso de la credencial (abajo)
-            doc.addImage(backImageData, 'JPEG', 20, 165, 170, 106);
-            doc.text('REVERSO', 105, 280, { align: 'center' });
+            doc.addImage(backImageData, 'JPEG', 25, 155, 160, 100);
+            doc.text('REVERSO', 105, 260, { align: 'center' });
             
             // Pie de página
             doc.setFontSize(8);
-            doc.text('Documento generado por Escáner de Credenciales - Para fines de identificación', 105, 290, { align: 'center' });
+            doc.text('Documento generado por Escáner de Credenciales - Para fines de identificación', 105, 270, { align: 'center' });
             
             // Generar el PDF como blob
             const pdfBlob = doc.output('blob');
