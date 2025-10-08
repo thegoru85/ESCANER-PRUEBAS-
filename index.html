@@ -611,11 +611,21 @@
         let pdfFile = null;
         let focusInterval = null;
 
-        // Inicialización
+        // Inicialización - CORREGIDA
         function init() {
-            // Event listeners
-            scanFrontBtn.addEventListener('click', () => openCamera('front'));
-            scanBackBtn.addEventListener('click', () => openCamera('back'));
+            console.log('Inicializando aplicación...');
+            
+            // Event listeners para botones de escanear - CORREGIDOS
+            scanFrontBtn.addEventListener('click', function() {
+                console.log('Botón Escanear Frente clickeado');
+                openCamera('front');
+            });
+            
+            scanBackBtn.addEventListener('click', function() {
+                console.log('Botón Escanear Reverso clickeado');
+                openCamera('back');
+            });
+            
             generatePdfBtn.addEventListener('click', generatePDF);
             downloadBtn.addEventListener('click', downloadPDF);
             sendEmailBtn.addEventListener('click', sendEmail);
@@ -634,13 +644,20 @@
             });
             
             updateUI();
+            console.log('Aplicación inicializada correctamente');
         }
 
-        // Abrir cámara
+        // Abrir cámara - CORREGIDA
         async function openCamera(side) {
+            console.log(`Abriendo cámara para: ${side}`);
             currentSide = side;
             
             try {
+                // Detener stream anterior si existe
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
                 const constraints = {
                     video: { 
                         facingMode: 'environment',
@@ -649,7 +666,9 @@
                     }
                 };
                 
+                console.log('Solicitando acceso a la cámara...');
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('Acceso a cámara concedido');
                 
                 cameraFeed.srcObject = stream;
                 cameraContainer.style.display = 'flex';
@@ -669,6 +688,36 @@
                 console.error('Error al acceder a la cámara:', error);
                 statusDiv.textContent = 'Error: No se pudo acceder a la cámara. Asegúrate de permitir el acceso.';
                 statusDiv.className = 'status status-error';
+                
+                // Intentar con cámara frontal si falla la trasera
+                try {
+                    console.log('Intentando con cámara frontal...');
+                    const fallbackConstraints = {
+                        video: { 
+                            facingMode: 'user',
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                    cameraFeed.srcObject = stream;
+                    cameraContainer.style.display = 'flex';
+                    
+                    const track = stream.getVideoTracks()[0];
+                    const settings = track.getSettings();
+                    resolutionInfo.textContent = `${settings.width || '?'}×${settings.height || '?'}`;
+                    resolutionInfo.style.display = 'block';
+                    
+                    startAutoFocus();
+                    statusDiv.textContent = `Cámara frontal activada. Encuadra el ${side === 'front' ? 'FRENTE' : 'REVERSO'} de la credencial`;
+                    statusDiv.className = 'status status-info';
+                    
+                } catch (fallbackError) {
+                    console.error('Error con cámara frontal:', fallbackError);
+                    statusDiv.textContent = 'Error: No se pudo acceder a ninguna cámara. Verifica los permisos.';
+                    statusDiv.className = 'status status-error';
+                }
             }
         }
 
@@ -694,6 +743,7 @@
 
         // Cerrar cámara
         function closeCamera() {
+            console.log('Cerrando cámara...');
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
@@ -710,6 +760,7 @@
 
         // Capturar imagen
         function captureImage() {
+            console.log('Capturando imagen...');
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             
@@ -767,6 +818,7 @@
                 frontPreview.querySelector('.preview-icon').style.display = 'none';
                 frontRotation = 0;
                 statusDiv.textContent = 'Frente de la credencial capturado correctamente';
+                console.log('Imagen frontal guardada');
             } else {
                 backImageData = imageData;
                 updatePreviewImage(backImage, imageData);
@@ -774,6 +826,7 @@
                 backPreview.querySelector('.preview-icon').style.display = 'none';
                 backRotation = 0;
                 statusDiv.textContent = 'Reverso de la credencial capturado correctamente';
+                console.log('Imagen reverso guardada');
             }
             
             statusDiv.className = 'status status-success';
@@ -875,7 +928,7 @@
                 );
                 
                 doc.setFontSize(12);
-                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' );
+                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' });
                 
                 doc.addImage(
                     backImageData, 
@@ -886,11 +939,11 @@
                     finalBackHeight
                 );
                 
-                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' );
+                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' });
                 
                 // Pie de página
                 doc.setFontSize(8);
-                doc.text('Documento generado por Escáner de Credenciales', 105, 285, { align: 'center' );
+                doc.text('Documento generado por Escáner de Credenciales', 105, 285, { align: 'center' });
                 
                 pdfFile = doc.output('blob');
                 
@@ -915,7 +968,7 @@
             }
         }
 
-        // Enviar por correo - CORREGIDO
+        // Enviar por correo
         function sendEmail() {
             if (!pdfFile) {
                 statusDiv.textContent = 'Error: Primero debes generar el PDF';
@@ -1015,8 +1068,16 @@
             }
         }
 
-        // Inicializar
-        window.addEventListener('DOMContentLoaded', init);
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM cargado, inicializando...');
+            init();
+        });
+
+        // También inicializar cuando la ventana cargue completamente
+        window.addEventListener('load', function() {
+            console.log('Ventana cargada completamente');
+        });
     </script>
 </body>
 </html>
