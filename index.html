@@ -573,10 +573,6 @@
         let pdfFile = null;
         let focusInterval = null;
 
-        // Dimensiones del recuadro de recorte (ALTA RESOLUCIÓN)
-        const CROP_WIDTH = 800;   // Aumentado para mejor calidad
-        const CROP_HEIGHT = 500;  // Aumentado para mejor calidad
-
         // Inicialización
         function init() {
             // Event listeners
@@ -593,17 +589,16 @@
             updateUI();
         }
 
-        // Abrir cámara con ALTA RESOLUCIÓN
+        // Abrir cámara
         async function openCamera(side) {
             currentSide = side;
             
             try {
-                // Solicitar acceso a la cámara trasera con máxima resolución
                 const constraints = {
                     video: { 
                         facingMode: 'environment',
-                        width: { ideal: 3840, max: 3840 },
-                        height: { ideal: 2160, max: 2160 }
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
                     }
                 };
                 
@@ -625,31 +620,8 @@
                 
             } catch (error) {
                 console.error('Error al acceder a la cámara:', error);
-                // Intentar con resolución más baja si falla
-                try {
-                    const fallbackConstraints = {
-                        video: { 
-                            facingMode: 'environment',
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 }
-                        }
-                    };
-                    
-                    stream = await navigator.mediaDevices.getUserMedia(fallbackConstraints);
-                    cameraFeed.srcObject = stream;
-                    cameraContainer.style.display = 'flex';
-                    
-                    const track = stream.getVideoTracks()[0];
-                    const settings = track.getSettings();
-                    resolutionInfo.textContent = `${settings.width || '?'}×${settings.height || '?'}`;
-                    resolutionInfo.style.display = 'block';
-                    
-                    startAutoFocus();
-                    
-                } catch (fallbackError) {
-                    statusDiv.textContent = 'Error: No se pudo acceder a la cámara. Asegúrate de permitir el acceso.';
-                    statusDiv.className = 'status status-error';
-                }
+                statusDiv.textContent = 'Error: No se pudo acceder a la cámara. Asegúrate de permitir el acceso.';
+                statusDiv.className = 'status status-error';
             }
         }
 
@@ -689,12 +661,12 @@
             updateUI();
         }
 
-        // Capturar y recortar imagen con ALTA CALIDAD
+        // Capturar imagen
         function captureImage() {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
             
-            // Configurar canvas con las dimensiones del video (alta resolución)
+            // Configurar canvas con las dimensiones del video
             canvas.width = cameraFeed.videoWidth;
             canvas.height = cameraFeed.videoHeight;
             
@@ -720,25 +692,29 @@
             const cropWidth = cropGuideRect.width * scaleX;
             const cropHeight = cropGuideRect.height * scaleY;
             
-            // Crear canvas para imagen recortada con ALTA RESOLUCIÓN
+            // Crear canvas para imagen recortada
             const croppedCanvas = document.createElement('canvas');
-            croppedCanvas.width = CROP_WIDTH;
-            croppedCanvas.height = CROP_HEIGHT;
+            croppedCanvas.width = cropWidth;
+            croppedCanvas.height = cropHeight;
             const croppedContext = croppedCanvas.getContext('2d');
             
-            // Configurar MÁXIMA calidad
+            // Configurar calidad
             croppedContext.imageSmoothingEnabled = true;
             croppedContext.imageSmoothingQuality = 'high';
             
-            // Dibujar el área recortada con alta calidad
+            // Dibujar el área recortada
             croppedContext.drawImage(
                 canvas,
                 cropX, cropY, cropWidth, cropHeight,
-                0, 0, CROP_WIDTH, CROP_HEIGHT
+                0, 0, cropWidth, cropHeight
             );
             
-            // Obtener imagen recortada con CALIDAD MÁXIMA
-            const imageData = croppedCanvas.toDataURL('image/jpeg', 1.0); // 100% de calidad
+            // Obtener imagen recortada
+            const imageData = croppedCanvas.toDataURL('image/jpeg', 0.9);
+            
+            // DEBUG: Verificar qué imagen se está guardando
+            console.log(`Guardando imagen para: ${currentSide}`);
+            console.log(`Dimensiones: ${croppedCanvas.width}x${croppedCanvas.height}`);
             
             // Actualizar vista previa
             if (currentSide === 'front') {
@@ -747,14 +723,14 @@
                 frontPreview.classList.add('filled');
                 frontPreview.querySelector('.preview-icon').style.display = 'none';
                 frontRotation = 0;
-                statusDiv.textContent = 'Frente de la credencial capturado con alta calidad';
+                statusDiv.textContent = 'Frente de la credencial capturado correctamente';
             } else {
                 backImageData = imageData;
                 updatePreviewImage(backImage, imageData);
                 backPreview.classList.add('filled');
                 backPreview.querySelector('.preview-icon').style.display = 'none';
                 backRotation = 0;
-                statusDiv.textContent = 'Reverso de la credencial capturado con alta calidad';
+                statusDiv.textContent = 'Reverso de la credencial capturado correctamente';
             }
             
             statusDiv.className = 'status status-success';
@@ -762,25 +738,15 @@
             updateUI();
         }
 
-        // Actualizar imagen de vista previa - CORREGIDO para mantener proporciones
+        // Actualizar imagen de vista previa
         function updatePreviewImage(imgElement, imageData) {
             const tempImg = new Image();
             tempImg.onload = function() {
                 imgElement.src = imageData;
                 imgElement.style.display = 'block';
-                
-                // Mantener proporciones originales sin estirar
                 imgElement.style.objectFit = 'contain';
                 imgElement.style.width = '100%';
                 imgElement.style.height = '100%';
-                imgElement.style.maxWidth = '100%';
-                imgElement.style.maxHeight = '100%';
-                
-                // Centrar la imagen
-                imgElement.style.margin = 'auto';
-                imgElement.style.display = 'block';
-                
-                console.log('Imagen cargada con dimensiones:', tempImg.naturalWidth, 'x', tempImg.naturalHeight);
             };
             tempImg.src = imageData;
         }
@@ -796,7 +762,7 @@
             }
         }
 
-        // Generar PDF con ALTA CALIDAD
+        // Generar PDF - COMPLETAMENTE CORREGIDO
         function generatePDF() {
             if (!frontImageData || !backImageData) {
                 statusDiv.textContent = 'Error: Debes capturar ambas caras de la credencial primero';
@@ -804,7 +770,7 @@
                 return;
             }
             
-            statusDiv.textContent = 'Generando PDF de alta calidad...';
+            statusDiv.textContent = 'Generando PDF...';
             statusDiv.className = 'status status-info';
             
             const { jsPDF } = window.jspdf;
@@ -819,25 +785,91 @@
             doc.setFontSize(10);
             doc.text(`Escaneado el: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 105, 27, { align: 'center' });
             
-            // Frente (arriba) - Mantener proporciones con alta calidad
-            doc.addImage(frontImageData, 'JPEG', 20, 40, 170, 110, 'HIGH');
-            doc.setFontSize(12);
-            doc.text('FRENTE', 105, 155, { align: 'center' });
+            // DEBUG: Verificar qué imágenes se van a usar
+            console.log('Generando PDF con:');
+            console.log('Frente:', frontImageData ? 'SI' : 'NO');
+            console.log('Reverso:', backImageData ? 'SI' : 'NO');
             
-            // Reverso (abajo) - Mantener proporciones con alta calidad
-            doc.addImage(backImageData, 'JPEG', 20, 165, 170, 110, 'HIGH');
-            doc.text('REVERSO', 105, 280, { align: 'center' });
+            // Crear promesas para cargar ambas imágenes
+            const loadFrontImage = new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = frontImageData;
+            });
             
-            // Pie de página
-            doc.setFontSize(8);
-            doc.text('Documento generado por Escáner de Credenciales - Alta Calidad', 105, 290, { align: 'center' });
+            const loadBackImage = new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = backImageData;
+            });
             
-            pdfFile = doc.output('blob');
-            
-            statusDiv.textContent = 'PDF de alta calidad generado correctamente';
-            statusDiv.className = 'status status-success';
-            downloadBtn.disabled = false;
-            sendEmailBtn.disabled = false;
+            // Cuando ambas imágenes estén cargadas, generar el PDF
+            Promise.all([loadFrontImage, loadBackImage]).then(([frontImg, backImg]) => {
+                console.log('Imágenes cargadas:', {
+                    frente: `${frontImg.width}x${frontImg.height}`,
+                    reverso: `${backImg.width}x${backImg.height}`
+                });
+                
+                // Calcular dimensiones manteniendo proporciones
+                const maxWidth = 170; // mm
+                const maxHeight = 100; // mm
+                
+                // Frente (arriba)
+                const frontWidth = maxWidth;
+                const frontHeight = (frontImg.height * maxWidth) / frontImg.width;
+                const finalFrontHeight = Math.min(frontHeight, maxHeight);
+                
+                const frontX = (210 - maxWidth) / 2; // Centrar horizontalmente
+                const frontY = 40;
+                
+                // Reverso (abajo)
+                const backWidth = maxWidth;
+                const backHeight = (backImg.height * maxWidth) / backImg.width;
+                const finalBackHeight = Math.min(backHeight, maxHeight);
+                
+                const backX = (210 - maxWidth) / 2; // Centrar horizontalmente
+                const backY = frontY + finalFrontHeight + 20;
+                
+                // Agregar imágenes al PDF
+                doc.addImage(
+                    frontImageData, 
+                    'JPEG', 
+                    frontX, 
+                    frontY, 
+                    frontWidth, 
+                    finalFrontHeight
+                );
+                
+                doc.setFontSize(12);
+                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' });
+                
+                doc.addImage(
+                    backImageData, 
+                    'JPEG', 
+                    backX, 
+                    backY, 
+                    backWidth, 
+                    finalBackHeight
+                );
+                
+                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' });
+                
+                // Pie de página
+                doc.setFontSize(8);
+                doc.text('Documento generado por Escáner de Credenciales', 105, 285, { align: 'center' });
+                
+                pdfFile = doc.output('blob');
+                
+                statusDiv.textContent = 'PDF generado correctamente con ambas imágenes diferentes';
+                statusDiv.className = 'status status-success';
+                downloadBtn.disabled = false;
+                sendEmailBtn.disabled = false;
+                
+            }).catch(error => {
+                console.error('Error al cargar imágenes:', error);
+                statusDiv.textContent = 'Error al generar el PDF';
+                statusDiv.className = 'status status-error';
+            });
         }
 
         // Generar nombre de archivo
@@ -845,7 +877,7 @@
             const name = userNameInput.value.trim();
             const id = userIdInput.value.trim();
             
-            let fileName = 'credencial_alta_calidad';
+            let fileName = 'credencial';
             
             if (name) {
                 const cleanName = name
@@ -855,7 +887,7 @@
                     .replace(/[^a-z0-9]/g, '_')
                     .replace(/_+/g, '_')
                     .replace(/^_|_$/g, '');
-                fileName = cleanName + '_alta_calidad';
+                fileName = cleanName;
             }
             
             if (id) {
@@ -879,7 +911,7 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
-            statusDiv.textContent = 'PDF de alta calidad descargado correctamente';
+            statusDiv.textContent = 'PDF descargado correctamente';
         }
 
         // Enviar por correo
@@ -888,8 +920,8 @@
             
             const fileName = generateFileName();
             const userName = userNameInput.value.trim() || 'el propietario';
-            const subject = `Credencial Escaneada - ${userName} - Alta Calidad`;
-            const body = `Adjunto encontrarás el PDF con las imágenes escaneadas en alta calidad de la credencial de ${userName}.`;
+            const subject = `Credencial Escaneada - ${userName}`;
+            const body = `Adjunto encontrarás el PDF con las imágenes escaneadas de la credencial de ${userName}.`;
             
             statusDiv.textContent = 'Para enviar por correo: Descarga el PDF y adjúntalo manualmente en tu cliente de correo';
             statusDiv.className = 'status status-info';
@@ -902,7 +934,7 @@
             rotateBackBtn.style.display = backImageData ? 'flex' : 'none';
             
             if (frontImageData && backImageData && !pdfFile) {
-                statusDiv.textContent = 'Ambas caras capturadas en alta calidad. Presiona "Generar PDF"';
+                statusDiv.textContent = 'Ambas caras capturadas. Presiona "Generar PDF"';
                 statusDiv.className = 'status status-info';
             }
         }
