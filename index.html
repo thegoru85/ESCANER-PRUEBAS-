@@ -372,6 +372,28 @@
             font-size: 14px;
         }
 
+        .email-selector {
+            background-color: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .email-selector h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+
+        .email-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: white;
+        }
+
         .focus-indicator {
             position: absolute;
             top: 10px;
@@ -471,6 +493,19 @@
             </div>
         </div>
 
+        <!-- Selector de correo -->
+        <div class="email-selector">
+            <h3>Destinatario del correo:</h3>
+            <select id="email-select" class="email-select">
+                <option value="rst0113@sears.com.mx">rst0113@sears.com.mx</option>
+                <option value="gc0113@sears.com.mx">gc0113@sears.com.mx</option>
+                <option value="otro">Otro correo electrónico</option>
+            </select>
+            <div id="custom-email-container" style="display: none; margin-top: 10px;">
+                <input type="email" id="custom-email" placeholder="Ingresa el correo electrónico" class="form-group" style="width: 100%;">
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title">
                 <i>📷</i> Vista Previa
@@ -560,6 +595,9 @@
         const statusDiv = document.getElementById('status');
         const userNameInput = document.getElementById('user-name');
         const userIdInput = document.getElementById('user-id');
+        const emailSelect = document.getElementById('email-select');
+        const customEmailContainer = document.getElementById('custom-email-container');
+        const customEmailInput = document.getElementById('custom-email');
         const focusIndicator = document.getElementById('focus-indicator');
         const resolutionInfo = document.getElementById('resolution-info');
 
@@ -585,6 +623,15 @@
             cancelCameraBtn.addEventListener('click', closeCamera);
             rotateFrontBtn.addEventListener('click', () => rotateImage('front'));
             rotateBackBtn.addEventListener('click', () => rotateImage('back'));
+            
+            // Selector de correo
+            emailSelect.addEventListener('change', function() {
+                if (this.value === 'otro') {
+                    customEmailContainer.style.display = 'block';
+                } else {
+                    customEmailContainer.style.display = 'none';
+                }
+            });
             
             updateUI();
         }
@@ -712,10 +759,6 @@
             // Obtener imagen recortada
             const imageData = croppedCanvas.toDataURL('image/jpeg', 0.9);
             
-            // DEBUG: Verificar qué imagen se está guardando
-            console.log(`Guardando imagen para: ${currentSide}`);
-            console.log(`Dimensiones: ${croppedCanvas.width}x${croppedCanvas.height}`);
-            
             // Actualizar vista previa
             if (currentSide === 'front') {
                 frontImageData = imageData;
@@ -762,7 +805,7 @@
             }
         }
 
-        // Generar PDF - COMPLETAMENTE CORREGIDO
+        // Generar PDF
         function generatePDF() {
             if (!frontImageData || !backImageData) {
                 statusDiv.textContent = 'Error: Debes capturar ambas caras de la credencial primero';
@@ -785,11 +828,6 @@
             doc.setFontSize(10);
             doc.text(`Escaneado el: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 105, 27, { align: 'center' });
             
-            // DEBUG: Verificar qué imágenes se van a usar
-            console.log('Generando PDF con:');
-            console.log('Frente:', frontImageData ? 'SI' : 'NO');
-            console.log('Reverso:', backImageData ? 'SI' : 'NO');
-            
             // Crear promesas para cargar ambas imágenes
             const loadFrontImage = new Promise((resolve) => {
                 const img = new Image();
@@ -805,10 +843,6 @@
             
             // Cuando ambas imágenes estén cargadas, generar el PDF
             Promise.all([loadFrontImage, loadBackImage]).then(([frontImg, backImg]) => {
-                console.log('Imágenes cargadas:', {
-                    frente: `${frontImg.width}x${frontImg.height}`,
-                    reverso: `${backImg.width}x${backImg.height}`
-                });
                 
                 // Calcular dimensiones manteniendo proporciones
                 const maxWidth = 170; // mm
@@ -841,7 +875,7 @@
                 );
                 
                 doc.setFontSize(12);
-                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' });
+                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' );
                 
                 doc.addImage(
                     backImageData, 
@@ -852,11 +886,11 @@
                     finalBackHeight
                 );
                 
-                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' });
+                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' );
                 
                 // Pie de página
                 doc.setFontSize(8);
-                doc.text('Documento generado por Escáner de Credenciales', 105, 285, { align: 'center' });
+                doc.text('Documento generado por Escáner de Credenciales', 105, 285, { align: 'center' );
                 
                 pdfFile = doc.output('blob');
                 
@@ -870,6 +904,61 @@
                 statusDiv.textContent = 'Error al generar el PDF';
                 statusDiv.className = 'status status-error';
             });
+        }
+
+        // Obtener correo destino
+        function getTargetEmail() {
+            if (emailSelect.value === 'otro') {
+                return customEmailInput.value.trim();
+            } else {
+                return emailSelect.value;
+            }
+        }
+
+        // Enviar por correo - CORREGIDO
+        function sendEmail() {
+            if (!pdfFile) {
+                statusDiv.textContent = 'Error: Primero debes generar el PDF';
+                statusDiv.className = 'status status-error';
+                return;
+            }
+
+            const targetEmail = getTargetEmail();
+            
+            if (!targetEmail) {
+                statusDiv.textContent = 'Error: Debes seleccionar o ingresar un correo válido';
+                statusDiv.className = 'status status-error';
+                return;
+            }
+
+            // Validar formato de email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(targetEmail)) {
+                statusDiv.textContent = 'Error: El formato del correo electrónico no es válido';
+                statusDiv.className = 'status status-error';
+                return;
+            }
+
+            const userName = userNameInput.value.trim() || 'el cliente';
+            const fileName = generateFileName();
+            
+            // Crear el enlace mailto
+            const subject = `Credencial Escaneada - ${userName}`;
+            const body = `Estimado equipo,%0D%0A%0D%0AAdjunto encontrarás el PDF con las imágenes escaneadas de la credencial de ${userName}.%0D%0A%0D%0APara cualquier aclaración, quedo a sus órdenes.%0D%0A%0D%0ASaludos cordiales.`;
+            
+            const mailtoLink = `mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${body}`;
+            
+            // Abrir el cliente de correo
+            window.location.href = mailtoLink;
+            
+            statusDiv.textContent = `Abriendo cliente de correo para: ${targetEmail}`;
+            statusDiv.className = 'status status-success';
+            
+            // Mensaje informativo adicional
+            setTimeout(() => {
+                statusDiv.textContent = '💡 Consejo: Descarga el PDF primero y luego adjúntalo manualmente en el correo';
+                statusDiv.className = 'status status-info';
+            }, 3000);
         }
 
         // Generar nombre de archivo
@@ -912,19 +1001,6 @@
             URL.revokeObjectURL(url);
             
             statusDiv.textContent = 'PDF descargado correctamente';
-        }
-
-        // Enviar por correo
-        function sendEmail() {
-            if (!pdfFile) return;
-            
-            const fileName = generateFileName();
-            const userName = userNameInput.value.trim() || 'el propietario';
-            const subject = `Credencial Escaneada - ${userName}`;
-            const body = `Adjunto encontrarás el PDF con las imágenes escaneadas de la credencial de ${userName}.`;
-            
-            statusDiv.textContent = 'Para enviar por correo: Descarga el PDF y adjúntalo manualmente en tu cliente de correo';
-            statusDiv.className = 'status status-info';
         }
 
         // Actualizar UI
