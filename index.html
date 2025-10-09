@@ -758,7 +758,7 @@
             updateUI();
         }
 
-        // Capturar imagen
+        // Capturar imagen - MODIFICADO para recorte más ajustado
         function captureImage() {
             console.log('Capturando imagen...');
             const canvas = document.createElement('canvas');
@@ -784,11 +784,27 @@
             const scaleX = videoRect.width / displayRect.width;
             const scaleY = videoRect.height / displayRect.height;
             
-            // Calcular coordenadas de recorte
-            const cropX = (cropGuideRect.left - displayRect.left) * scaleX;
-            const cropY = (cropGuideRect.top - displayRect.top) * scaleY;
-            const cropWidth = cropGuideRect.width * scaleX;
-            const cropHeight = cropGuideRect.height * scaleY;
+            // Calcular coordenadas de recorte - AJUSTADAS para recorte más ajustado
+            // Reducimos un 5% en cada borde para eliminar bordes excesivos
+            const marginAdjustment = 0.05; // 5% de ajuste
+            
+            let cropX = (cropGuideRect.left - displayRect.left) * scaleX;
+            let cropY = (cropGuideRect.top - displayRect.top) * scaleY;
+            let cropWidth = cropGuideRect.width * scaleX;
+            let cropHeight = cropGuideRect.height * scaleY;
+            
+            // Aplicar ajuste para recorte más ajustado
+            const horizontalAdjust = cropWidth * marginAdjustment;
+            const verticalAdjust = cropHeight * marginAdjustment;
+            
+            cropX += horizontalAdjust;
+            cropY += verticalAdjust;
+            cropWidth -= horizontalAdjust * 2;
+            cropHeight -= verticalAdjust * 2;
+            
+            // Asegurar que no tengamos dimensiones negativas
+            if (cropWidth < 1) cropWidth = 1;
+            if (cropHeight < 1) cropHeight = 1;
             
             // Crear canvas para imagen recortada
             const croppedCanvas = document.createElement('canvas');
