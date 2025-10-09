@@ -858,7 +858,7 @@
             }
         }
 
-        // Generar PDF
+        // Generar PDF - CORREGIDO para mantener relación de aspecto
         function generatePDF() {
             if (!frontImageData || !backImageData) {
                 statusDiv.textContent = 'Error: Debes capturar ambas caras de la credencial primero';
@@ -897,49 +897,73 @@
             // Cuando ambas imágenes estén cargadas, generar el PDF
             Promise.all([loadFrontImage, loadBackImage]).then(([frontImg, backImg]) => {
                 
-                // Calcular dimensiones manteniendo proporciones
+                // Dimensiones máximas para las imágenes en el PDF
                 const maxWidth = 170; // mm
                 const maxHeight = 100; // mm
                 
-                // Frente (arriba)
-                const frontWidth = maxWidth;
-                const frontHeight = (frontImg.height * maxWidth) / frontImg.width;
-                const finalFrontHeight = Math.min(frontHeight, maxHeight);
+                // Calcular dimensiones para la imagen frontal manteniendo relación de aspecto
+                let frontWidth, frontHeight;
+                const frontAspectRatio = frontImg.width / frontImg.height;
                 
-                const frontX = (210 - maxWidth) / 2; // Centrar horizontalmente
+                if (frontAspectRatio > maxWidth / maxHeight) {
+                    // La imagen es más ancha que el contenedor
+                    frontWidth = maxWidth;
+                    frontHeight = maxWidth / frontAspectRatio;
+                } else {
+                    // La imagen es más alta que el contenedor
+                    frontHeight = maxHeight;
+                    frontWidth = maxHeight * frontAspectRatio;
+                }
+                
+                // Calcular posición para centrar la imagen
+                const frontX = (210 - frontWidth) / 2;
                 const frontY = 40;
                 
-                // Reverso (abajo)
-                const backWidth = maxWidth;
-                const backHeight = (backImg.height * maxWidth) / backImg.width;
-                const finalBackHeight = Math.min(backHeight, maxHeight);
+                // Calcular dimensiones para la imagen reverso manteniendo relación de aspecto
+                let backWidth, backHeight;
+                const backAspectRatio = backImg.width / backImg.height;
                 
-                const backX = (210 - maxWidth) / 2; // Centrar horizontalmente
-                const backY = frontY + finalFrontHeight + 20;
+                if (backAspectRatio > maxWidth / maxHeight) {
+                    // La imagen es más ancha que el contenedor
+                    backWidth = maxWidth;
+                    backHeight = maxWidth / backAspectRatio;
+                } else {
+                    // La imagen es más alta que el contenedor
+                    backHeight = maxHeight;
+                    backWidth = maxHeight * backAspectRatio;
+                }
+                
+                // Calcular posición para centrar la imagen
+                const backX = (210 - backWidth) / 2;
+                const backY = frontY + frontHeight + 20;
+                
+                // Aplicar rotaciones si es necesario
+                let frontImgData = frontImageData;
+                let backImgData = backImageData;
                 
                 // Agregar imágenes al PDF
                 doc.addImage(
-                    frontImageData, 
+                    frontImgData, 
                     'JPEG', 
                     frontX, 
                     frontY, 
                     frontWidth, 
-                    finalFrontHeight
+                    frontHeight
                 );
                 
                 doc.setFontSize(12);
-                doc.text('FRENTE', 105, frontY + finalFrontHeight + 8, { align: 'center' });
+                doc.text('FRENTE', 105, frontY + frontHeight + 8, { align: 'center' });
                 
                 doc.addImage(
-                    backImageData, 
+                    backImgData, 
                     'JPEG', 
                     backX, 
                     backY, 
                     backWidth, 
-                    finalBackHeight
+                    backHeight
                 );
                 
-                doc.text('REVERSO', 105, backY + finalBackHeight + 8, { align: 'center' });
+                doc.text('REVERSO', 105, backY + backHeight + 8, { align: 'center' });
                 
                 // Pie de página
                 doc.setFontSize(8);
